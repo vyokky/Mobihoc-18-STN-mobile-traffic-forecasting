@@ -183,3 +183,44 @@ f
                 net_targets = ((net_targets - mean) / float(std)).reshape(self.batchsize, -1)
 
             yield (net_inputs - mean) / float(std), net_targets
+
+class DoubleSourceProvider(object):
+    """
+    provider for data in 2 files
+    ------------------------------------------------------
+    :arg
+    batchsize: int, the size of batch, default -1 (take all data generated)
+    shuffle: bool, default True. shuffle the data or not
+    """
+
+    def __init__(self, batchsize, shuffle):
+
+        self.batchsize = batchsize
+        self.shuffle = shuffle
+
+    def feed(self, inputs, targets):
+
+        """
+        generate data from input files
+        ------------------------------------------------
+        :arg
+        inputs: np.array, the source input data
+        targets: np.array, the source target data
+
+        :return
+        input: np.array
+        target: np.array
+        """
+
+        assert len(inputs) == len(targets)
+        if self.batchsize < 0:
+            self.batchsize = len(inputs)
+        if self.shuffle:
+            indices = np.arange(len(inputs))
+            np.random.shuffle(indices)
+        for start_idx in range(0, len(inputs) - self.batchsize + 1, self.batchsize):
+            if self.shuffle:
+                excerpt = indices[start_idx:start_idx + self.batchsize]
+            else:
+                excerpt = slice(start_idx, start_idx + self.batchsize)
+            yield inputs[excerpt], targets[excerpt]

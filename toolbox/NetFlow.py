@@ -152,6 +152,89 @@ def customfit(sess, network, cost, train_op, tra_provider, x, y_, acc=None, n_ep
 
     print("Total training time: %fs" % (time.time() - start_time_begin))
 
+def easyfit(sess, network, cost, train_op, tra_provider, x, y_, n_epoch=50, tra_kwag=None, print_loss=False):
+    """
+        Train a given network by the given cost function, dataset, n_epoch etc.
+
+        Parameters
+        ----------
+        sess : TensorFlow session
+            sess = tf.InteractiveSession()
+        network : a TensorLayer layer
+            the network will be trained
+        train_op : a TensorFlow optimizer
+            like tf.train.AdamOptimizer
+        x : placeholder
+            for inputs
+        y_ : placeholder
+            for targets
+        cost:  the TensorFlow expression of cost
+        tra_provider :
+            A object of DataProvider for training
+        tra_kwag :
+            Parameters dic. fed to the tra_provider
+        n_epoch : int
+            the number of training epochs
+        print_loss : loss
+            display the loss or not
+    """
+
+    # assert X_train.shape[0] >= batch_size, "Number of training examples should be bigger than the batch size"
+    for epoch in range(n_epoch):
+        loss_ep = 0;
+        n_step = 0
+
+        for batch in tra_provider.feed(**tra_kwag):
+            X_train_a, y_train_a = batch
+            feed_dict = {x: X_train_a, y_: y_train_a}
+            feed_dict.update(network.all_drop)  # enable noise layers
+            loss, _ = sess.run([cost, train_op], feed_dict=feed_dict)
+            loss_ep += loss
+            n_step += 1
+        loss_ep = loss_ep / n_step
+
+        if print_loss:
+            print('loss:', loss_ep)
+
+def customtest(sess, network, acc, test_provider, x, y_, cost, test_kwag=None):
+    """
+        Test a given non time-series network by the given test data and metric.
+
+        Parameters
+        ----------
+        sess : TensorFlow session
+            sess = tf.InteractiveSession()
+        network : a TensorLayer layer
+            the network will be trained
+        acc : the TensorFlow expression of accuracy (or other metric) or None
+            if None, would not display the metric
+        test_provider : A object of DataProvider
+        test_kwag : Parameters dic for test_provider
+            the target of test data
+        x : placeholder
+            for inputs
+        y_ : placeholder
+            for targets
+        cost : the TensorFlow expression of cost or None
+            if None, would not display the cost
+    """
+    test_loss, test_acc, n_batch = 0, 0, 0
+    for batch in test_provider.feed(**test_kwag):
+        X_test_a, y_test_a = batch
+        dp_dict = dict_to_one(network.all_drop)  # disable noise layers
+        feed_dict = {x: X_test_a, y_: y_test_a}
+        feed_dict.update(dp_dict)
+        if acc is not None:
+            err, ac = sess.run([cost, acc], feed_dict=feed_dict)
+            test_acc += ac
+        else:
+            err = sess.run(cost, feed_dict=feed_dict)
+        test_loss += err;
+        n_batch += 1
+    print("   test loss: %f" % (test_loss / n_batch))
+    if acc is not None:
+        print("   test acc: %f" % (test_acc / n_batch))
+
 
 def Ouroborosfit(sess, network, cost, dataset, train_op, batchsize, input_size, x, y_, pad, n_epoch=50,
                  val_provider=None, save_model=-1, val_kwag=None, save_path=None, epoch_identifier=None, mean=0, std=1,
@@ -220,7 +303,6 @@ def Ouroborosfit(sess, network, cost, dataset, train_op, batchsize, input_size, 
                 print ("Epoch %d, frame %d of %d" % (epoch + 1, frame, dataset.shape[-1]-input_size[-1])),
             easyfit(sess=sess, network=network, cost=cost, train_op=train_op, tra_provider=tra_provider, x=x,
                     y_=y_, n_epoch=1, tra_kwag=tra_kwag, print_loss=print_frame_loss)
-            sys.stdout.flush()
 
         if val_provider is not None:
             customtest(sess=sess, network=network, acc=None, test_provider=val_provider, x=x, y_=y_, cost=cost,
