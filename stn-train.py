@@ -130,6 +130,8 @@ learning_rate = args.lr
 shuffle = True
 flatten = True
 output_size = (1,1,1)
+mean = tra_set.mean()
+std = tra_set.mean()
 
 tra_kwag = {
     'inputs':tra_set,
