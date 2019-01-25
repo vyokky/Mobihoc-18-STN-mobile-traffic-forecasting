@@ -154,19 +154,3 @@ class ConvRNNLayer(tl.layers.Layer):
         self.all_layers.extend( [self.outputs] )
         self.all_params.extend( rnn_variables )
 
-
-
-
-        ## fixed
-        self.all_layers = list(layer.all_layers)
-        self.all_params = list(layer.all_params)
-        self.all_drop = dict(layer.all_drop)
-
-        ## theta_layer
-        # print offset_layer.all_params
-
-        # print 'haha', self.all_params
-        ## this layer
-        self.all_layers.extend([self.outputs])
-        self.all_params.extend([W, b])
-
