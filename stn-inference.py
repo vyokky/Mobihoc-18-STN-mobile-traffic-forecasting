@@ -1,6 +1,7 @@
 import toolbox.NetFlow as nf
 from toolbox import DataProvider
 from toolbox import LayerExtension
+from toolbox import ConvRNNCell
 import tensorflow as tf
 import tensorlayer as tl
 import numpy as np
@@ -85,7 +86,7 @@ def get_arguments():
                         help='the time index in the period for starting the prediction')
     parser.add_argument('--start_t',
                         type=int,
-                        default=0,
+                        default=13,
                         help='the time index for starting the prediction')
     parser.add_argument('--step',
                         type=int,
@@ -107,6 +108,10 @@ def get_arguments():
                         type=float,
                         default=0.5,
                         help='parameter \delta in the OTS')
+    parser.add_argument('--framebatch',
+                        type=int,
+                        default=1,
+                        help='batchsize of a frame')
     return parser.parse_args()
 
 args = get_arguments()
@@ -114,31 +119,28 @@ args = get_arguments()
 
 def load_dataset():
 
-    tra_set = np.load(args.datadir + 'milan_tra.npy')
-    val_set = np.load(args.datadir + 'milan_val.npy')
     test_set = np.load(args.datadir + 'milan_test.npy')
-    print('training set:', tra_set.shape)
-    print('validation set:', val_set.shape)
     print('test set:', test_set.shape)
 
-    return tra_set, val_set, test_set
+    return test_set
 
-tra_set, val_set, test_set = load_dataset()
+test_set = load_dataset()
 history = (np.load(args.empirical_mean) - args.mean) / args.std
 
 framebatch = args.framebatch
 stride = args.stride
-input_size = (args.input_x, args.input_y, args.input_x, args.observations)
+
+input_size = (args.input_x, args.input_y, args.observations)
+
 prediction_gap = args.prediction_gap
-batchsize = args.batchsize
+
 pad = args.pad
 pad_value = args.pad_value
-num_epochs = args.epoch
-learning_rate = args.lr
+
 shuffle = True
 flatten = True
 output_size = (1,1,1)
-frameshape = (test_set.shape[1], test_set.shape[2])
+frameshape = (test_set.shape[0], test_set.shape[1])
 
 test_provider = DataProvider.Provider(stride = stride, input_size = input_size,
                            output_size = output_size, prediction_gap = prediction_gap,
@@ -147,7 +149,6 @@ test_provider = DataProvider.Provider(stride = stride, input_size = input_size,
 
 x = tf.placeholder(tf.float32, shape=[None, args.observations, args.input_x, args.input_y], name='x')
 y_ = tf.placeholder(tf.float32, shape=[None, 1], name='y_')
-
 
 
 def stn(x, input_x, input_y, observations, reuse=False, name='stn'):
@@ -189,7 +190,10 @@ params  = tl.files.load_npz(path=args.model_path, name=args.model_name)
 tl.files.assign_params(sess, params, network)
 params_ots  = tl.files.load_npz(path=args.model_path_ots, name=args.model_name_ots)
 tl.files.assign_params(sess, params_ots, network_ots)
-# initialize all variables
+
+tl.layers.initialize_global_variables(sess)
+
+
 print 'set done'
 
 
