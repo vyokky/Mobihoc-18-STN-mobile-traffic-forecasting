@@ -120,7 +120,7 @@ tra_set, val_set, test_set = load_dataset()
 
 framebatch = args.framebatch
 stride = args.stride
-input_size = (args.input_x, args.input_y, args.input_x, args.observations)
+input_size = (args.input_x, args.input_y, args.observations)
 prediction_gap = args.prediction_gap
 batchsize = args.batchsize
 pad = args.pad
